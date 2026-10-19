@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能家居实验室 · 八年级物联网实践</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+      background: #0a0f1a;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      color: #e2e8f0;
+    }
+
+    .app {
+      max-width: 1480px;
+      width: 100%;
+      background: #111827;
+      border-radius: 2.5rem 1.5rem 2.5rem 1.5rem;
+      box-shadow: 0 30px 60px -15px #000000cc, inset 0 1px 2px #ffffff1a;
+      padding: 1.8rem 1.8rem 1.8rem;
+      border: 1px solid #1e293b;
+    }
+
+    /* 头部 */
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #7dd3fc, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: -0.3px;
+    }
+
+    .header .sub {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+
+    /* 主布局 */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 1.5rem;
+      margin-bottom: 1.2rem;
+    }
+
+    /* 左侧：房子动画 + 设备状态 */
+    .house-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .house-container {
+      background: #0f172a;
+      border-radius: 2rem 0.8rem 2rem 0.8rem;
+      border: 1px solid #1e293b;
+      padding: 1.2rem;
+      box-shadow: 0 6px 0 #020617;
+    }
+
+    .house-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.8rem;
+      font-weight: 600;
+      color: #bae6fd;
+      font-size: 1rem;
+      border-bottom: 2px solid #1e293b;
+      padding-bottom: 0.4rem;
+    }
+
+    /* 房子 SVG 动画区域 */
+    .house-scene {
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+      border-radius: 1.5rem;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #1e293b;
+    }
+
+    .house-svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* 动画元素 */
+    .light-glow {
+      transition: opacity 0.5s ease;
+    }
+
+    .light-glow.on {
+      opacity: 1;
+      animation: lightFlicker 2s infinite alternate;
+    }
+
+    .light-glow.off {
+      opacity: 0.05;
+    }
+
+    @keyframes lightFlicker {
+      0% { opacity: 0.85; }
+      100% { opacity: 1; }
+    }
+
+    .fan-blades {
+      transform-origin: 50% 50%;
+      transition: transform 0.2s;
+    }
+
+    .fan-blades.spinning {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .water-drop {
+      animation: drop 1.2s ease-in infinite;
+    }
+
+    @keyframes drop {
+      0% { transform: translateY(-10px); opacity: 0; }
+      30% { opacity: 1; }
+      100% { transform: translateY(20px); opacity: 0; }
+    }
+
+    .smoke-particle {
+      animation: smoke 2s ease-out infinite;
+    }
+
+    @keyframes smoke {
+      0% { transform: translateY(0) scale(0.8); opacity: 0.6; }
+      100% { transform: translateY(-30px) scale(1.4); opacity: 0; }
+    }
+
+    .curtain-left, .curtain-right {
+      transition: transform 0.6s ease;
+    }
+
+    .door-panel {
+      transition: transform 0.5s ease;
+      transform-origin: left center;
+    }
+
+    .door-panel.open {
+      transform: perspective(400px) rotateY(-70deg);
+    }
+
+    /* 执行器状态条 */
+    .status-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-top: 0.8rem;
+    }
+
+    .status-chip {
+      background: #1e293b;
+      border-radius: 30px;
+      padding: 0.3rem 0.8rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      transition: all 0.3s;
+    }
+
+    .status-chip.active {
+      background: #1e2e2a;
+      border-color: #22c55e;
+      color: #4ade80;
+      box-shadow: 0 0 12px #22c55e40;
+    }
+
+    /* 右侧：设备库 + 规则 */
+    .right-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .panel {
+      background: #0f172a;
+      border-radius: 2rem 0.8rem 2rem 0.8rem;
+      border: 1px solid #1e293b;
+      padding: 1.2rem 1.2rem 1rem;
+      box-shadow: 0 6px 0 #020617;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.8rem;
+      font-weight: 600;
+      color: #bae6fd;
+      font-size: 0.95rem;
+      border-bottom: 2px solid #1e293b;
+      padding-bottom: 0.4rem;
+    }
+
+    /* 设备库 */
+    .lib-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+    }
+
+    .lib-column h4 {
+      font-size: 0.8rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+
+    .lib-items {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      max-height: 230px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .lib-item {
+      background: #1e293b;
+      border-radius: 1rem 0.4rem 1rem 0.4rem;
+      padding: 0.5rem 0.7rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      border: 1px solid #334155;
+      transition: all 0.15s;
+      box-shadow: 0 2px 0 #020617;
+      position: relative;
+    }
+
+    .lib-item:hover {
+      background: #1e2a3a;
+      border-color: #38bdf8;
+      transform: translateY(-1px);
+    }
+
+    .lib-item.used {
+      opacity: 0.35;
+      cursor: not-allowed;
+      background: #0f172a;
+      border-color: #1e293b;
+      transform: none;
+      box-shadow: 0 1px 0 #020617;
+    }
+
+    .lib-item.used::after {
+      content: "✓";
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #22c55e;
+      color: #0f172a;
+      font-size: 0.7rem;
+      font-weight: 700;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 5px #00000060;
+    }
+
+    .lib-icon {
+      font-size: 1.4rem;
+      filter: drop-shadow(0 2px 3px #00000080);
+      flex-shrink: 0;
+    }
+
+    .lib-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .lib-name {
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: #e2e8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .lib-desc {
+      font-size: 0.65rem;
+      color: #94a3b8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* 已选设备 */
+    .device-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      min-height: 50px;
+    }
+
+    .device-chip {
+      background: #1e293b;
+      border-radius: 1.2rem 0.5rem 1.2rem 0.5rem;
+      padding: 0.5rem 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-left: 5px solid #38bdf8;
+      box-shadow: 0 3px 0 #020617;
+      transition: all 0.2s;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .device-chip.selected {
+      border-left-color: #facc15;
+      background: #1e2a3a;
+      box-shadow: 0 0 0 2px #facc1540, 0 3px 0 #020617;
+    }
+
+    .device-chip.actuator-chip {
+      border-left-color: #a78bfa;
+    }
+
+    .device-chip.actuator-chip.active {
+      border-left-color: #22c55e;
+      background: #1e2e2a;
+    }
+
+    .device-chip .chip-icon {
+      font-size: 1.3rem;
+    }
+
+    .device-chip .chip-name {
+      font-weight: 600;
+      font-size: 0.78rem;
+    }
+
+    .device-chip .chip-value {
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+      color: #7dd3fc;
+      background: #020617;
+      padding: 0.1rem 0.5rem;
+      border-radius: 20px;
+      border: 1px solid #1e293b;
+    }
+
+    .device-chip .chip-toggle {
+      width: 36px;
+      height: 20px;
+      background: #334155;
+      border-radius: 30px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    .device-chip .chip-toggle.on {
+      background: #22c55e;
+    }
+
+    .device-chip .chip-toggle .knob {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px #00000060;
+    }
+
+    .device-chip .chip-toggle.on .knob {
+      transform: translateX(16px);
+    }
+
+    /* 规则 */
+    .rule-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-height: 200px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .rule-item {
+      background: #1e293b;
+      border-radius: 1.2rem 0.5rem 1.2rem 0.5rem;
+      padding: 0.5rem 0.7rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px 6px;
+      border: 1px solid #334155;
+      box-shadow: 0 2px 0 #020617;
+      font-size: 0.8rem;
+    }
+
+    .rule-item select, .rule-item input {
+      background: #020617;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      padding: 0.25rem 0.4rem;
+      border-radius: 30px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .rule-item input {
+      width: 60px;
+      text-align: center;
+    }
+
+    .rule-item .delete-rule {
+      margin-left: auto;
+      background: #450a0a;
+      color: #f87171;
+      border: none;
+      border-radius: 30px;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .btn-add-rule {
+      background: #0f172a;
+      border: 2px dashed #38bdf8;
+      color: #7dd3fc;
+      box-shadow: none;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.8rem;
+      width: 100%;
+      justify-content: center;
+      margin-top: 0.6rem;
+      border-radius: 1rem;
+      cursor: pointer;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+
+    .btn-add-rule:hover {
+      background: #0f1a2e;
+      border-color: #7dd3fc;
+    }
+
+    .empty-hint {
+      color: #475569;
+      text-align: center;
+      padding: 0.8rem 0;
+      font-size: 0.8rem;
+    }
+
+    /* 按钮组 */
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+      justify-content: center;
+      margin-top: 1.2rem;
+    }
+
+    .btn {
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 3rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.08s linear;
+      border: 2px solid #ffffff20;
+      font-size: 0.9rem;
+      box-shadow: 0 5px 0 #020617, 0 5px 15px #00000040;
+    }
+
+    .btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 1px 0 #020617, 0 5px 15px #00000040;
+    }
+
+    .btn-primary {
+      background: #38bdf8;
+      color: #0f172a;
+      box-shadow: 0 5px 0 #0284c7, 0 5px 15px #00000040;
+    }
+
+    .btn-primary:active {
+      box-shadow: 0 1px 0 #0284c7, 0 5px 15px #00000040;
+    }
+
+    .btn-secondary {
+      background: #334155;
+      color: #e2e8f0;
+      box-shadow: 0 5px 0 #1e293b, 0 5px 15px #00000040;
+    }
+
+    .btn-secondary:active {
+      box-shadow: 0 1px 0 #1e293b, 0 5px 15px #00000040;
+    }
+
+    /* 底部状态 */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #020617;
+      border-radius: 2rem 0.5rem 2rem 0.5rem;
+      padding: 0.7rem 1.4rem;
+      margin-top: 1.2rem;
+      font-size: 0.85rem;
+      color: #94a3b8;
+      border: 1px solid #1e293b;
+    }
+
+    .status-message {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 10px #22c55e;
+    }
+
+    /* 滚动条 */
+    ::-webkit-scrollbar {
+      width: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 10px;
+    }
+
+    /* 响应式 */
+    @media (max-width: 1000px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
+      .house-scene {
+        aspect-ratio: 16/9;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .app {
+        padding: 1rem;
+      }
+      .header h1 {
+        font-size: 1.3rem;
+      }
+      .lib-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- 头部 -->
+    <div class="header">
+      <div>
+        <h1><span>🏠</span> 智能家居实验室</h1>
+        <div class="sub">自由组合传感器与执行器 · 设计自动化规则 · 观察房子动画</div>
+      </div>
+      <div style="font-size: 0.8rem; color: #94a3b8; background: #1e293b; padding: 0.4rem 1rem; border-radius: 30px;">
+        ⚡ 点击设备添加 · 配置规则 · 模拟运行
+      </div>
+    </div>
+
+    <!-- 主布局 -->
+    <div class="main-layout">
+      <!-- 左侧：房子动画 -->
+      <div class="house-section">
+        <div class="house-container">
+          <div class="house-header">
+            <span>🏡 我的智能房子</span>
+            <span style="font-size: 0.7rem; color: #64748b;">实时动画</span>
+          </div>
+          <div class="house-scene">
+            <svg class="house-svg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet">
+              <!-- 天空背景 -->
+              <rect x="0" y="0" width="400" height="300" fill="#0f172a" rx="10"/>
+              
+              <!-- 月亮 -->
+              <circle cx="60" cy="45" r="18" fill="#fef9c3" opacity="0.8"/>
+              <circle cx="70" cy="40" r="15" fill="#0f172a" opacity="0.9"/>
+              
+              <!-- 星星 -->
+              <circle cx="150" cy="30" r="1.5" fill="#fef9c3" opacity="0.6"/>
+              <circle cx="250" cy="50" r="1" fill="#fef9c3" opacity="0.4"/>
+              <circle cx="330" cy="25" r="1.5" fill="#fef9c3" opacity="0.5"/>
+              <circle cx="180" cy="70" r="1" fill="#fef9c3" opacity="0.3"/>
+              <circle cx="300" cy="80" r="1.2" fill="#fef9c3" opacity="0.4"/>
+              
+              <!-- 房子主体 -->
+              <rect x="90" y="120" width="220" height="140" fill="#1e293b" stroke="#334155" stroke-width="2" rx="4"/>
+              
+              <!-- 屋顶 -->
+              <polygon points="80,120 200,40 320,120" fill="#7f1d1d" stroke="#991b1b" stroke-width="2"/>
+              <polygon points="80,120 200,40 320,120" fill="url(#roofGradient)" opacity="0.5"/>
+              <defs>
+                <linearGradient id="roofGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#dc2626"/>
+                  <stop offset="100%" stop-color="#7f1d1d"/>
+                </linearGradient>
+              </defs>
+              
+              <!-- 烟囱 -->
+              <rect x="260" y="60" width="20" height="50" fill="#78716c" stroke="#57534e" stroke-width="1.5"/>
+              
+              <!-- 烟雾粒子 (烟雾报警时显示) -->
+              <g id="smokeParticles" style="display: none;">
+                <circle class="smoke-particle" cx="270" cy="55" r="4" fill="#94a3b8" opacity="0.5"/>
+                <circle class="smoke-particle" cx="275" cy="45" r="5" fill="#94a3b8" opacity="0.4" style="animation-delay: 0.5s;"/>
+                <circle class="smoke-particle" cx="265" cy="35" r="6" fill="#94a3b8" opacity="0.3" style="animation-delay: 1s;"/>
+              </g>
+              
+              <!-- 门 -->
+              <g id="doorGroup">
+                <rect x="180" y="180" width="50" height="80" fill="#57534e" stroke="#78716c" stroke-width="2" rx="3"/>
+                <!-- 门把手 -->
+                <circle cx="220" cy="220" r="3" fill="#fbbf24"/>
+                <!-- 门开启动画 (旋转) -->
+                <g id="doorPanel" class="door-panel">
+                  <rect x="180" y="180" width="50" height="80" fill="#44403c" stroke="#57534e" stroke-width="1.5" rx="2"/>
+                  <circle cx="220" cy="220" r="3" fill="#fbbf24"/>
+                </g>
+              </g>
+              
+              <!-- 窗户 -->
+              <g id="windowGroup">
+                <rect x="110" y="150" width="50" height="45" fill="#0ea5e9" stroke="#334155" stroke-width="2" rx="3" opacity="0.3"/>
+                <!-- 窗户灯光 -->
+                <rect id="windowLight" x="110" y="150" width="50" height="45" fill="#fef08a" opacity="0" rx="3" class="light-glow off"/>
+                <!-- 窗帘 -->
+                <rect id="curtainLeft" x="110" y="150" width="20" height="45" fill="#be123c" opacity="0.8" rx="2" class="curtain-left"/>
+                <rect id="curtainRight" x="140" y="150" width="20" height="45" fill="#be123c" opacity="0.8" rx="2" class="curtain-right"/>
+              </g>
+              
+              <!-- 第二扇窗户 (客厅) -->
+              <g id="windowGroup2">
+                <rect x="250" y="150" width="40" height="40" fill="#0ea5e9" stroke="#334155" stroke-width="2" rx="3" opacity="0.3"/>
+                <rect id="windowLight2" x="250" y="150" width="40" height="40" fill="#fef08a" opacity="0" rx="3" class="light-glow off"/>
+              </g>
+              
+              <!-- 通风扇 -->
+              <g id="fanGroup">
+                <circle cx="140" cy="100" r="15" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+                <g id="fanBlades" class="fan-blades">
+                  <ellipse cx="140" cy="88" rx="4" ry="10" fill="#94a3b8"/>
+                  <ellipse cx="152" cy="100" rx="10" ry="4" fill="#94a3b8" transform="rotate(90,152,100)"/>
+                  <ellipse cx="140" cy="112" rx="4" ry="10" fill="#94a3b8"/>
+                  <ellipse cx="128" cy="100" rx="10" ry="4" fill="#94a3b8" transform="rotate(90,128,100)"/>
+                </g>
+                <circle cx="140" cy="100" r="4" fill="#475569"/>
+              </g>
+              
+              <!-- 水滴 (灌溉时显示) -->
+              <g id="waterDrops" style="display: none;">
+                <circle class="water-drop" cx="120" cy="200" r="3" fill="#38bdf8" opacity="0.8"/>
+                <circle class="water-drop" cx="130" cy="205" r="2.5" fill="#38bdf8" opacity="0.7" style="animation-delay: 0.4s;"/>
+                <circle class="water-drop" cx="140" cy="198" r="3.5" fill="#38bdf8" opacity="0.6" style="animation-delay: 0.8s;"/>
+              </g>
+              
+              <!-- 火焰 (加热时显示) -->
+              <g id="flameGroup" style="display: none;">
+                <ellipse cx="200" cy="280" rx="8" ry="15" fill="#f97316" opacity="0.8"/>
+                <ellipse cx="200" cy="278" rx="5" ry="10" fill="#fbbf24" opacity="0.9"/>
+                <ellipse cx="200" cy="276" rx="3" ry="6" fill="#fef08a"/>
+              </g>
+              
+              <!-- 蜂鸣器声波 (报警时显示) -->
+              <g id="alarmWaves" style="display: none;">
+                <circle cx="340" cy="100" r="10" fill="none" stroke="#ef4444" stroke-width="2" opacity="0.8">
+                  <animate attributeName="r" from="10" to="30" dur="1s" repeatCount="indefinite"/>
+                  <animate attributeName="opacity" from="0.8" to="0" dur="1s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="340" cy="100" r="10" fill="none" stroke="#ef4444" stroke-width="2" opacity="0.6">
+                  <animate attributeName="r" from="10" to="30" dur="1s" begin="0.5s" repeatCount="indefinite"/>
+                  <animate attributeName="opacity" from="0.6" to="0" dur="1s" begin="0.5s" repeatCount="indefinite"/>
+                </circle>
+                <text x="340" y="105" text-anchor="middle" font-size="16" fill="#ef4444">🔊</text>
+              </g>
+            </svg>
+          </div>
+          <!-- 执行器状态条 -->
+          <div class="status-row" id="statusRow">
+            <div class="status-chip" id="chip-light">💡 灯光 <span id="chip-light-state">关</span></div>
+            <div class="status-chip" id="chip-fan">🌀 风扇 <span id="chip-fan-state">关</span></div>
+            <div class="status-chip" id="chip-pump">💧 灌溉 <span id="chip-pump-state">关</span></div>
+            <div class="status-chip" id="chip-alarm">🔊 报警 <span id="chip-alarm-state">关</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧：设备库 + 规则 -->
+      <div class="right-section">
+        <!-- 设备库 -->
+        <div class="panel">
+          <div class="panel-header">
+            <span>📦 智能家居设备库</span>
+            <span style="font-size: 0.7rem; color: #64748b;">点击添加</span>
+          </div>
+          <div class="lib-grid">
+            <div class="lib-column">
+              <h4>📡 传感器</h4>
+              <div class="lib-items" id="sensorLib"></div>
+            </div>
+            <div class="lib-column">
+              <h4>⚙️ 执行器</h4>
+              <div class="lib-items" id="actuatorLib"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 已选设备 -->
+        <div class="panel">
+          <div class="panel-header">
+            <span>🔌 我的设备</span>
+            <span style="font-size: 0.7rem; color: #64748b;">点击选择传感器</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+            <div>
+              <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.3rem;">📡 传感器</div>
+              <div class="device-grid" id="mySensors">
+                <div class="empty-hint" style="padding: 0.4rem;">从上方库添加</div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.3rem;">⚙️ 执行器</div>
+              <div class="device-grid" id="myActuators">
+                <div class="empty-hint" style="padding: 0.4rem;">从上方库添加</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 规则 -->
+        <div class="panel">
+          <div class="panel-header">
+            <span>📋 自动化规则</span>
+            <span style="font-size: 0.7rem; color: #64748b;">条件 → 动作</span>
+          </div>
+          <div class="rule-list" id="ruleList">
+            <div class="empty-hint">添加规则来自动控制</div>
+          </div>
+          <button class="btn-add-rule" id="addRuleBtn">
+            <span>+</span> 添加规则
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 按钮组 -->
+    <div class="btn-group">
+      <button class="btn btn-primary" id="simulateBtn">
+        <span>🌦️</span> 模拟家居环境变化
+      </button>
+      <button class="btn btn-secondary" id="refreshBtn">
+        <span>🔄</span> 刷新传感器
+      </button>
+      <button class="btn btn-secondary" id="resetBtn">
+        <span>🔄</span> 清空重来
+      </button>
+    </div>
+
+    <!-- 底部状态 -->
+    <div class="status-bar">
+      <div class="status-message">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">就绪 · 从上方库中选择智能家居设备开始</span>
+      </div>
+      <div>
+        <span>传感器: <span style="color:#7dd3fc;" id="sensorCount">0</span></span> &nbsp;|&nbsp;
+        <span>执行器: <span style="color:#7dd3fc;" id="actuatorCount">0</span></span> &nbsp;|&nbsp;
+        <span>规则: <span style="color:#7dd3fc;" id="ruleCount">0</span></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      // ========== 智能家居设备库 ==========
+      const sensorLib = [
+        { id: 'temp', name: '温度传感器', icon: '🌡️', unit: '°C', value: 24.5, min: 10, max: 40, step: 0.5, desc: '检测室内温度' },
+        { id: 'humi', name: '湿度传感器', icon: '💧', unit: '%', value: 58, min: 10, max: 95, step: 1, desc: '检测空气湿度' },
+        { id: 'light', name: '光照传感器', icon: '☀️', unit: 'lx', value: 4200, min: 100, max: 10000, step: 50, desc: '检测光照强度' },
+        { id: 'motion', name: '人体移动', icon: '🚶', unit: '', value: 0, min: 0, max: 1, step: 1, desc: '检测是否有人' },
+        { id: 'smoke', name: '烟雾传感器', icon: '💨', unit: 'ppm', value: 0, min: 0, max: 1000, step: 10, desc: '检测烟雾浓度' },
+        { id: 'door', name: '门窗传感器', icon: '🚪', unit: '', value: 0, min: 0, max: 1, step: 1, desc: '检测门窗开关' },
+        { id: 'water', name: '水浸传感器', icon: '🌊', unit: '', value: 0, min: 0, max: 1, step: 1, desc: '检测是否漏水' },
+        { id: 'co2', name: 'CO₂传感器', icon: '🫧', unit: 'ppm', value: 420, min: 300, max: 2000, step: 10, desc: '检测空气质量' },
+      ];
+
+      const actuatorLib = [
+        { id: 'light', name: '智能灯光', icon: '💡', state: false, desc: '控制室内灯光' },
+        { id: 'fan', name: '智能风扇', icon: '🌀', state: false, desc: '通风换气' },
+        { id: 'pump', name: '智能灌溉', icon: '💧', state: false, desc: '给植物浇水' },
+        { id: 'alarm', name: '声光报警', icon: '🔊', state: false, desc: '发出警报' },
+        { id: 'curtain', name: '智能窗帘', icon: '🪟', state: false, desc: '自动开关窗帘' },
+        { id: 'doorlock', name: '智能门锁', icon: '🔒', state: false, desc: '控制门锁开关' },
+        { id: 'heater', name: '智能加热', icon: '🔥', state: false, desc: '升高温度' },
+        { id: 'valve', name: '智能水阀', icon: '🔧', state: false, desc: '控制水阀开关' },
+      ];
+
+      // ========== 状态 ==========
+      let sensors = [];      // { id, name, icon, unit, value, min, max, step, desc }
+      let actuators = [];    // { id, name, icon, state, desc }
+      let rules = [];        // { sensorId, operator, value, actuatorId, action }
+      let selectedSensorId = null;
+
+      // DOM
+      const sensorLibEl = document.getElementById('sensorLib');
+      const actuatorLibEl = document.getElementById('actuatorLib');
+      const mySensorsEl = document.getElementById('mySensors');
+      const myActuatorsEl = document.getElementById('myActuators');
+      const ruleListEl = document.getElementById('ruleList');
+      const sensorCountEl = document.getElementById('sensorCount');
+      const actuatorCountEl = document.getElementById('actuatorCount');
+      const ruleCountEl = document.getElementById('ruleCount');
+      const statusTextEl = document.getElementById('statusText');
+      const statusDotEl = document.getElementById('statusDot');
+
+      // 房子动画元素
+      const windowLight = document.getElementById('windowLight');
+      const windowLight2 = document.getElementById('windowLight2');
+      const fanBlades = document.getElementById('fanBlades');
+      const doorPanel = document.getElementById('doorPanel');
+      const curtainLeft = document.getElementById('curtainLeft');
+      const curtainRight = document.getElementById('curtainRight');
+      const waterDrops = document.getElementById('waterDrops');
+      const smokeParticles = document.getElementById('smokeParticles');
+      const alarmWaves = document.getElementById('alarmWaves');
+      const flameGroup = document.getElementById('flameGroup');
+
+      // 状态条
+      const chipLight = document.getElementById('chip-light');
+      const chipFan = document.getElementById('chip-fan');
+      const chipPump = document.getElementById('chip-pump');
+      const chipAlarm = document.getElementById('chip-alarm');
+      const chipLightState = document.getElementById('chip-light-state');
+      const chipFanState = document.getElementById('chip-fan-state');
+      const chipPumpState = document.getElementById('chip-pump-state');
+      const chipAlarmState = document.getElementById('chip-alarm-state');
+
+      // ========== 辅助函数 ==========
+      function setStatus(msg, warn = false) {
+        statusTextEl.textContent = msg;
+        statusDotEl.style.background = warn ? '#facc15' : '#22c55e';
+        statusDotEl.style.boxShadow = warn ? '0 0 10px #facc15' : '0 0 10px #22c55e';
+      }
+
+      function getSensor(id) {
+        return sensors.find(s => s.id === id);
+      }
+
+      function getActuator(id) {
+        return actuators.find(a => a.id === id);
+      }
+
+      function updateCounts() {
+        sensorCountEl.textContent = sensors.length;
+        actuatorCountEl.textContent = actuators.length;
+        ruleCountEl.textContent = rules.length;
+      }
+
+      // ========== 渲染设备库 ==========
+      function renderLibraries() {
+        // 传感器库
+        sensorLibEl.innerHTML = sensorLib.map(lib => {
+          const used = !!getSensor(lib.id);
+          return `
+            <div class="lib-item ${used ? 'used' : ''}" data-type="sensor" data-id="${lib.id}">
+              <div class="lib-icon">${lib.icon}</div>
+              <div class="lib-info">
+                <div class="lib-name">${lib.name}</div>
+                <div class="lib-desc">${lib.desc}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // 执行器库
+        actuatorLibEl.innerHTML = actuatorLib.map(lib => {
+          const used = !!getActuator(lib.id);
+          return `
+            <div class="lib-item ${used ? 'used' : ''}" data-type="actuator" data-id="${lib.id}">
+              <div class="lib-icon">${lib.icon}</div>
+              <div class="lib-info">
+                <div class="lib-name">${lib.name}</div>
+                <div class="lib-desc">${lib.desc}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // 绑定点击事件
+        document.querySelectorAll('.lib-item:not(.used)').forEach(el => {
+          el.addEventListener('click', () => {
+            const type = el.dataset.type;
+            const id = el.dataset.id;
+            if (type === 'sensor') {
+              addSensor(id);
+            } else {
+              addActuator(id);
+            }
+          });
+        });
+      }
+
+      // ========== 添加设备 ==========
+      function addSensor(libId) {
+        const lib = sensorLib.find(l => l.id === libId);
+        if (!lib || getSensor(libId)) return;
+        const newSensor = { ...lib };
+        sensors.push(newSensor);
+        selectedSensorId = libId;
+        renderLibraries();
+        renderMySensors();
+        updateCounts();
+        setStatus(`已添加 ${lib.name}`, false);
+        updateHouseAnimation();
+      }
+
+      function addActuator(libId) {
+        const lib = actuatorLib.find(l => l.id === libId);
+        if (!lib || getActuator(libId)) return;
+        const newAct = { ...lib, state: false };
+        actuators.push(newAct);
+        renderLibraries();
+        renderMyActuators();
+        updateCounts();
+        setStatus(`已添加 ${lib.name}`, false);
+        updateHouseAnimation();
+      }
+
+      // ========== 渲染已选传感器 ==========
+      function renderMySensors() {
+        if (sensors.length === 0) {
+          mySensorsEl.innerHTML = '<div class="empty-hint" style="padding: 0.4rem;">从上方库添加</div>';
+          return;
+        }
+
+        mySensorsEl.innerHTML = sensors.map(s => {
+          let display = '';
+          if (s.id === 'motion' || s.id === 'door' || s.id === 'water') {
+            display = s.value > 0 ? '是' : '否';
+          } else {
+            display = s.value.toFixed(s.id === 'temp' ? 1 : 0) + ' ' + s.unit;
+          }
+          const isSelected = selectedSensorId === s.id;
+          return `
+            <div class="device-chip ${isSelected ? 'selected' : ''}" data-sensor-id="${s.id}">
+              <span class="chip-icon">${s.icon}</span>
+              <span class="chip-name">${s.name}</span>
+              <span class="chip-value">${display}</span>
+            </div>
+          `;
+        }).join('');
+
+        document.querySelectorAll('#mySensors .device-chip').forEach(chip => {
+          chip.addEventListener('click', () => {
+            const id = chip.dataset.sensorId;
+            selectedSensorId = (selectedSensorId === id) ? null : id;
+            renderMySensors();
+          });
+        });
+      }
+
+      // ========== 渲染已选执行器 ==========
+      function renderMyActuators() {
+        if (actuators.length === 0) {
+          myActuatorsEl.innerHTML = '<div class="empty-hint" style="padding: 0.4rem;">从上方库添加</div>';
+          return;
+        }
+
+        myActuatorsEl.innerHTML = actuators.map(a => {
+          const active = a.state;
+          return `
+            <div class="device-chip actuator-chip ${active ? 'active' : ''}">
+              <span class="chip-icon">${a.icon}</span>
+              <span class="chip-name">${a.name}</span>
+              <div class="chip-toggle ${active ? 'on' : ''}" data-actuator-id="${a.id}">
+                <div class="knob"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        document.querySelectorAll('.chip-toggle').forEach(toggle => {
+          toggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = toggle.dataset.actuatorId;
+            const act = getActuator(id);
+            if (act) {
+              act.state = !act.state;
+              renderMyActuators();
+              setStatus(`手动${act.state ? '开启' : '关闭'} ${act.name}`, false);
+              updateHouseAnimation();
+            }
+          });
+        });
+      }
+
+      // ========== 渲染规则 ==========
+      function renderRules() {
+        if (rules.length === 0) {
+          ruleListEl.innerHTML = '<div class="empty-hint">添加规则来自动控制</div>';
+          return;
+        }
+
+        ruleListEl.innerHTML = rules.map((rule, idx) => {
+          const sensor = getSensor(rule.sensorId);
+          const actuator = getActuator(rule.actuatorId);
+          if (!sensor || !actuator) return '';
+
+          return `
+            <div class="rule-item" data-index="${idx}">
+              <span>当</span>
+              <select class="rule-sensor" data-index="${idx}">
+                ${sensors.map(s => `<option value="${s.id}" ${s.id === rule.sensorId ? 'selected' : ''}>${s.icon} ${s.name}</option>`).join('')}
+              </select>
+              <select class="rule-operator" data-index="${idx}">
+                <option value="<" ${rule.operator === '<' ? 'selected' : ''}>低于</option>
+                <option value=">" ${rule.operator === '>' ? 'selected' : ''}>高于</option>
+              </select>
+              <input type="number" class="rule-value" data-index="${idx}" value="${rule.value}" step="any">
+              <span>时，</span>
+              <select class="rule-actuator" data-index="${idx}">
+                ${actuators.map(a => `<option value="${a.id}" ${a.id === rule.actuatorId ? 'selected' : ''}>${a.icon} ${a.name}</option>`).join('')}
+              </select>
+              <select class="rule-action" data-index="${idx}">
+                <option value="true" ${rule.action === true ? 'selected' : ''}>开启</option>
+                <option value="false" ${rule.action === false ? 'selected' : ''}>关闭</option>
+              </select>
+              <button class="delete-rule" data-index="${idx}">✕</button>
+            </div>
+          `;
+        }).join('');
+
+        // 绑定规则修改
+        document.querySelectorAll('.rule-sensor').forEach(sel => {
+          sel.addEventListener('change', e => {
+            const i = e.target.dataset.index;
+            rules[i].sensorId = e.target.value;
+            renderRules();
+          });
+        });
+        document.querySelectorAll('.rule-operator').forEach(sel => {
+          sel.addEventListener('change', e => {
+            const i = e.target.dataset.index;
+            rules[i].operator = e.target.value;
+            renderRules();
+          });
+        });
+        document.querySelectorAll('.rule-value').forEach(inp => {
+          inp.addEventListener('change', e => {
+            const i = e.target.dataset.index;
+            rules[i].value = parseFloat(e.target.value) || 0;
+            renderRules();
+          });
+        });
+        document.querySelectorAll('.rule-actuator').forEach(sel => {
+          sel.addEventListener('change', e => {
+            const i = e.target.dataset.index;
+            rules[i].actuatorId = e.target.value;
+            renderRules();
+          });
+        });
+        document.querySelectorAll('.rule-action').forEach(sel => {
+          sel.addEventListener('change', e => {
+            const i = e.target.dataset.index;
+            rules[i].action = e.target.value === 'true';
+            renderRules();
+          });
+        });
+        document.querySelectorAll('.delete-rule').forEach(btn => {
+          btn.addEventListener('click', e => {
+            e.stopPropagation();
+            const i = btn.dataset.index;
+            rules.splice(i, 1);
+            renderRules();
+            updateCounts();
+            setStatus('已删除规则', false);
+          });
+        });
+      }
+
+      // ========== 应用规则 ==========
+      function applyRules() {
+        let changed = false;
+        rules.forEach(rule => {
+          const sensor = getSensor(rule.sensorId);
+          const actuator = getActuator(rule.actuatorId);
+          if (!sensor || !actuator) return;
+
+          let condition = false;
+          if (rule.operator === '<') condition = sensor.value < rule.value;
+          else if (rule.operator === '>') condition = sensor.value > rule.value;
+
+          // 对于布尔型传感器 (motion/door/water)，处理 0/1 条件
+          if (sensor.id === 'motion' || sensor.id === 'door' || sensor.id === 'water') {
+            if (rule.operator === '>' && rule.value === 0) condition = sensor.value > 0;
+            else if (rule.operator === '<' && rule.value === 1) condition = sensor.value < 1;
+          }
+
+          if (condition && actuator.state !== rule.action) {
+            actuator.state = rule.action;
+            changed = true;
+          }
+        });
+        if (changed) {
+          renderMyActuators();
+          setStatus('⚡ 规则触发！执行器已自动调整', false);
+          updateHouseAnimation();
+        }
+      }
+
+      // ========== 刷新/模拟数据 ==========
+      function refreshSensorData(isSimulate = false) {
+        if (sensors.length === 0) {
+          setStatus('请先添加传感器', true);
+          return;
+        }
+
+        sensors.forEach(s => {
+          if (s.id === 'motion') {
+            const prob = isSimulate ? 0.8 : 0.5;
+            s.value = Math.random() > prob ? 1 : 0;
+          } else if (s.id === 'smoke') {
+            if (isSimulate && Math.random() > 0.75) {
+              s.value = Math.min(1000, s.value + 50 + Math.random() * 200);
+            } else {
+              s.value = Math.max(0, s.value - 20);
+            }
+          } else if (s.id === 'door' || s.id === 'water') {
+            const prob = isSimulate ? 0.3 : 0.15;
+            s.value = Math.random() > prob ? 1 : 0;
+          } else {
+            const range = s.max - s.min;
+            const delta = isSimulate ? (Math.random() * range * 0.35 - range * 0.15) : (Math.random() * range * 0.08 - range * 0.04);
+            let newVal = s.value + delta;
+            newVal = Math.min(s.max, Math.max(s.min, newVal));
+            s.value = newVal;
+          }
+        });
+
+        renderMySensors();
+        applyRules();
+        updateCounts();
+        updateHouseAnimation();
+        setStatus(isSimulate ? '🌦️ 家居环境变化模拟完成' : '🔄 传感器数据已刷新', false);
+      }
+
+      // ========== 添加规则 ==========
+      function addRule() {
+        if (sensors.length === 0 || actuators.length === 0) {
+          setStatus('请先添加至少一个传感器和一个执行器', true);
+          return;
+        }
+        const sensorId = selectedSensorId && getSensor(selectedSensorId) ? selectedSensorId : sensors[0].id;
+        const sensor = getSensor(sensorId);
+        let defaultValue = 50;
+        if (sensor.id === 'temp') defaultValue = 30;
+        else if (sensor.id === 'humi') defaultValue = 40;
+        else if (sensor.id === 'light') defaultValue = 3000;
+        else if (sensor.id === 'motion') defaultValue = 0;
+        else if (sensor.id === 'smoke') defaultValue = 100;
+        else if (sensor.id === 'door' || sensor.id === 'water') defaultValue = 0;
+        else if (sensor.id === 'co2') defaultValue = 800;
+
+        rules.push({
+          sensorId: sensorId,
+          operator: '>',
+          value: defaultValue,
+          actuatorId: actuators[0].id,
+          action: true,
+        });
+        renderRules();
+        updateCounts();
+        setStatus('已添加规则，请调整参数', false);
+      }
+
+      // ========== 更新房子动画 ==========
+      function updateHouseAnimation() {
+        // 灯光
+        const lightOn = getActuator('light')?.state || false;
+        windowLight.className = `light-glow ${lightOn ? 'on' : 'off'}`;
+        windowLight2.className = `light-glow ${lightOn ? 'on' : 'off'}`;
+        chipLight.classList.toggle('active', lightOn);
+        chipLightState.textContent = lightOn ? '开' : '关';
+
+        // 风扇
+        const fanOn = getActuator('fan')?.state || false;
+        if (fanOn) {
+          fanBlades.classList.add('spinning');
+        } else {
+          fanBlades.classList.remove('spinning');
+        }
+        chipFan.classList.toggle('active', fanOn);
+        chipFanState.textContent = fanOn ? '开' : '关';
+
+        // 灌溉
+        const pumpOn = getActuator('pump')?.state || false;
+        waterDrops.style.display = pumpOn ? 'block' : 'none';
+        chipPump.classList.toggle('active', pumpOn);
+        chipPumpState.textContent = pumpOn ? '开' : '关';
+
+        // 报警
+        const alarmOn = getActuator('alarm')?.state || false;
+        alarmWaves.style.display = alarmOn ? 'block' : 'none';
+        chipAlarm.classList.toggle('active', alarmOn);
+        chipAlarmState.textContent = alarmOn ? '开' : '关';
+
+        // 门锁
+        const doorlock = getActuator('doorlock')?.state || false;
+        if (doorlock) {
+          doorPanel.classList.add('open');
+        } else {
+          doorPanel.classList.remove('open');
+        }
+
+        // 窗帘
+        const curtain = getActuator('curtain')?.state || false;
+        if (curtain) {
+          curtainLeft.style.transform = 'translateX(-18px)';
+          curtainRight.style.transform = 'translateX(18px)';
+        } else {
+          curtainLeft.style.transform = 'translateX(0)';
+          curtainRight.style.transform = 'translateX(0)';
+        }
+
+        // 加热器
+        const heater = getActuator('heater')?.state || false;
+        flameGroup.style.display = heater ? 'block' : 'none';
+
+        // 烟雾粒子 (根据烟雾传感器)
+        const smokeSensor = getSensor('smoke');
+        if (smokeSensor && smokeSensor.value > 100) {
+          smokeParticles.style.display = 'block';
+        } else {
+          smokeParticles.style.display = 'none';
+        }
+      }
+
+      // ========== 重置 ==========
+      function resetAll() {
+        sensors = [];
+        actuators = [];
+        rules = [];
+        selectedSensorId = null;
+        renderLibraries();
+        renderMySensors();
+        renderMyActuators();
+        renderRules();
+        updateCounts();
+        updateHouseAnimation();
+        setStatus('已清空，重新开始探索吧', false);
+      }
+
+      // ========== 事件绑定 ==========
+      document.getElementById('addRuleBtn').addEventListener('click', addRule);
+      document.getElementById('simulateBtn').addEventListener('click', () => refreshSensorData(true));
+      document.getElementById('refreshBtn').addEventListener('click', () => refreshSensorData(false));
+      document.getElementById('resetBtn').addEventListener('click', resetAll);
+
+      // ========== 初始化 ==========
+      function init() {
+        renderLibraries();
+        renderMySensors();
+        renderMyActuators();
+        renderRules();
+        updateCounts();
+        updateHouseAnimation();
+        setStatus('就绪 · 从上方库中选择智能家居设备开始', false);
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
